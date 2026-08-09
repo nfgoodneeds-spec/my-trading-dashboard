@@ -75,6 +75,10 @@ if ticker_symbol:
             # データの取得 (intervalを指定)
             df = yf.download(ticker_symbol, start=start_date, end=end_date, interval=interval)
             
+            # 【エラー修正部分】yfinanceの新しいデータ構造を平坦化する処理
+            if isinstance(df.columns, pd.MultiIndex):
+                df.columns = df.columns.get_level_values(0)
+            
             if df.empty:
                 st.error("データが取得できませんでした。時間足の制限（短時間足は過去数ヶ月のみ）を超えている可能性があります。開始日を最近に設定してください。")
             else:
@@ -187,20 +191,9 @@ if ticker_symbol:
                     # 日中足の場合、休場時間（夜間など）や土日を一括で詰める
                     fig.update_xaxes(rangebreaks=[
                         dict(bounds=["sat", "mon"]), # 土日を除外
-                        # 必要に応じて取引時間外の除外設定を追加できます（例: 米国株なら22:00〜翌14:00など）
                     ])
 
                 st.plotly_chart(fig, use_container_width=True)
 
         except Exception as e:
             st.error(f"エラーが発生しました。詳細: {e}")
-            try:
-            # データの取得 (intervalを指定)
-            df = yf.download(ticker_symbol, start=start_date, end=end_date, interval=interval)
-            
-            # ★ 以下の2行を追加：yfinanceの新しいデータ構造を平坦化する処理
-            if isinstance(df.columns, pd.MultiIndex):
-                df.columns = df.columns.get_level_values(0)
-            
-            if df.empty:
-                st.error("データが取得できませんでした。時間足の制限（短時間足は過去数ヶ月のみ）を超えている可能性があります。開始日を最近に設定してください。")
