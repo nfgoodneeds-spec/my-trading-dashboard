@@ -16,8 +16,19 @@ st.title("📈 高度テクニカル＆AI予測ダッシュボード")
 # サイドバー（入力UI）
 # -------------------------
 st.sidebar.header("基本設定")
-ticker_symbol = st.sidebar.text_input("ティッカーシンボル", "GC=F")
-st.sidebar.caption("例: GC=F(金), JPY=X(ドル円), GBPJPY=X(ポンド円), AAPL(Apple)")
+
+# 【変更部分】手入力からプルダウンメニューへ変更
+ticker_options = {
+    "金 (Gold)": "GC=F",
+    "ドル円 (USD/JPY)": "JPY=X",
+    "ポンド円 (GBP/JPY)": "GBPJPY=X",
+    "ユーロ円 (EUR/JPY)": "EURJPY=X",
+    "日経平均株価": "^N225",
+    "S&P500 (米国株)": "^GSPC",
+    "Apple (米国株)": "AAPL"
+}
+selected_ticker_name = st.sidebar.selectbox("銘柄を選択", list(ticker_options.keys()))
+ticker_symbol = ticker_options[selected_ticker_name]
 
 # 時間足の選択
 interval_options = {
@@ -70,12 +81,12 @@ prophet_freq_mapping = {
 # メイン処理とデータ取得
 # -------------------------
 if ticker_symbol:
-    with st.spinner(f'{ticker_symbol} ({selected_interval_label}) のデータを取得中...'):
+    with st.spinner(f'{selected_ticker_name} ({selected_interval_label}) のデータを取得中...'):
         try:
             # データの取得 (intervalを指定)
             df = yf.download(ticker_symbol, start=start_date, end=end_date, interval=interval)
             
-            # 【エラー修正部分】yfinanceの新しいデータ構造を平坦化する処理
+            # yfinanceの新しいデータ構造を平坦化する処理
             if isinstance(df.columns, pd.MultiIndex):
                 df.columns = df.columns.get_level_values(0)
             
@@ -166,7 +177,7 @@ if ticker_symbol:
 
                 # レイアウト設定
                 fig.update_layout(height=900, xaxis_rangeslider_visible=False, margin=dict(l=50, r=50, t=50, b=50),
-                                  title=f"{ticker_symbol} テクニカル分析＆AI予測 ({selected_interval_label})")
+                                  title=f"{selected_ticker_name} テクニカル分析＆AI予測 ({selected_interval_label})")
                 fig.update_yaxes(range=[0, 100], row=3, col=1)
 
                 # 隙間を詰める処理 (休場日の非表示)
