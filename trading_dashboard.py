@@ -17,7 +17,6 @@ st.title("📈 高度テクニカル＆AI予測ダッシュボード")
 # -------------------------
 st.sidebar.header("基本設定")
 
-# 【変更部分】手入力からプルダウンメニューへ変更
 ticker_options = {
     "金 (Gold)": "GC=F",
     "ドル円 (USD/JPY)": "JPY=X",
@@ -83,8 +82,11 @@ prophet_freq_mapping = {
 if ticker_symbol:
     with st.spinner(f'{selected_ticker_name} ({selected_interval_label}) のデータを取得中...'):
         try:
+            # 【修正1】yfinanceは終了日を含まないため、自動的に+1日して取得する
+            fetch_end_date = end_date + datetime.timedelta(days=1)
+            
             # データの取得 (intervalを指定)
-            df = yf.download(ticker_symbol, start=start_date, end=end_date, interval=interval)
+            df = yf.download(ticker_symbol, start=start_date, end=fetch_end_date, interval=interval)
             
             # yfinanceの新しいデータ構造を平坦化する処理
             if isinstance(df.columns, pd.MultiIndex):
@@ -93,6 +95,10 @@ if ticker_symbol:
             if df.empty:
                 st.error("データが取得できませんでした。時間足の制限（短時間足は過去数ヶ月のみ）を超えている可能性があります。開始日を最近に設定してください。")
             else:
+                # 【修正2】データを日本時間(JST)に変換する
+                if df.index.tz is not None:
+                    df.index = df.index.tz_convert('Asia/Tokyo')
+
                 # --- テクニカル指標の計算 ---
                 df[f'SMA_{sma_short_window}'] = df['Close'].rolling(window=sma_short_window).mean()
                 df[f'SMA_{sma_long_window}'] = df['Close'].rolling(window=sma_long_window).mean()
@@ -114,7 +120,7 @@ if ticker_symbol:
                         date_col = df_prophet.columns[0]
                         df_prophet = df_prophet.rename(columns={date_col: 'ds', 'Close': 'y'})
                         
-                        # タイムゾーン情報の削除
+                        # タイムゾーン情報の削除 (Prophetエラー回避用)
                         if df_prophet['ds'].dt.tz is not None:
                             df_prophet['ds'] = df_prophet['ds'].dt.tz_localize(None)
 
@@ -137,7 +143,6 @@ if ticker_symbol:
                                     vertical_spacing=0.03, row_heights=[0.6, 0.2, 0.2])
 
                 # 【1段目】ローソク足チャートとSMA
-                # 日中足の場合、インデックスがDatetime型になるための調整
                 x_data = df.index.tz_localize(None) if df.index.tz is not None else df.index
 
                 fig.add_trace(go.Candlestick(x=x_data, open=df['Open'], high=df['High'], 
